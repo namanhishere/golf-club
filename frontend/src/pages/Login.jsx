@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext.jsx';
 import { Mail, Lock } from 'lucide-react'; 
-import Tray from '../components/Tray.jsx';
-import Button from '../components/Button.jsx';
-import InputForm from '../components/InputForm.jsx';
+
+import { useAuth } from '../context';
+import { api } from '../services';
+import { Tray, Button, InputForm } from '../components';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -21,19 +21,7 @@ const Login = () => {
     setError('');
 
     try {
-      // Backend expects 'email' based on authController.js
-      const response = await fetch('http://localhost:5000/api/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }), 
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || data.error || 'Login failed');
-      }
-
+      const data = await api.post('/login', { email, password });
       login(data.token, data.user);
       navigate('/home');
     } catch (err) {
@@ -56,7 +44,6 @@ const Login = () => {
 
       <Tray pos='col-start-4' size='col-span-6'>
         <form onSubmit={handleSubmit} className="flex flex-col gap-6 w-full px-4 py-2">
-          
           {error && (
             <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm font-medium border border-red-200">
               {error}
@@ -99,7 +86,6 @@ const Login = () => {
           </div>
         </form>
       </Tray>
-
       <div className='col-start-2 col-span-10 p-20'></div>
     </>
   );

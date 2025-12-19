@@ -1,61 +1,47 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Compass, Users, Trophy } from 'lucide-react';
-import { useAuth } from '../context/AuthContext.jsx';
 
-import Tray from '../components/Tray.jsx';
-import SearchBar from '../components/SearchBar.jsx';
-import CardUser from '../components/CardUser.jsx';
-import CardTournament from '../components/CardTournament.jsx'; 
-import Pagination from '../components/Pagination.jsx';
-import Loading from '../components/Loading.jsx';
-import ViewToggle from '../components/ViewToggle.jsx';
+import { useAuth } from '../context';
+import { api } from '../services';
+import { useDataFilter } from '../hooks';
+import { Tray, CardUser, CardTournament, SearchBar, Pagination, Loading, ViewToggle } from '../components';
 
 const ITEMS_PER_PAGE = 12;
-
 const VIEW_OPTIONS = [
   { id: 'members', label: 'Members', icon: Users },
   { id: 'tournaments', label: 'Events', icon: Trophy }
 ];
 
 const Directory = () => {
+  // State
   const [viewMode, setViewMode] = useState('members'); 
   const [data, setData] = useState([]); 
   const [isLoading, setIsLoading] = useState(true);
-  const { token } = useAuth();
-  const navigate = useNavigate();
-
   const [searchQuery, setSearchQuery] = useState(''); 
   const [sortBy, setSortBy] = useState('Name'); 
   const [sortDirection, setSortDirection] = useState('asc'); 
   const [currentPage, setCurrentPage] = useState(1);
+  
+  const { token } = useAuth();
+  const navigate = useNavigate();
 
+  // --- API Fetching ---
   useEffect(() => {
     const fetchData = async () => {
       try {
         setIsLoading(true);
         setData([]); 
-
-        let endpoint = '';
-        if (viewMode === 'members') {
-          endpoint = 'http://localhost:5000/api/users'; 
-        } else {
-          endpoint = 'http://localhost:5000/api/tournaments?status=UPCOMING';
-        }
-
-        const response = await fetch(endpoint, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-
-        if (response.ok) {
-          const result = await response.json();
-          
-          const formatted = result.map(item => {
+        
+        const endpoint = viewMode === 'members' ? '/users' : '/tournaments?status=UPCOMING';
+        const result = await api.get(endpoint, token);
+        
+        const formatted = result.map(item => {
             if (viewMode === 'members') {
                 return {
-                    // Search helper
-                    searchName: `${item.first_name} ${item.last_name}`,
-                    // Component Props
+                    // Flatten keys for easier searching/sorting
+                    name: `${item.first_name} ${item.last_name}`,
+                    role: item.role,
                     raw: {
                         userId: item.user_id,
                         firstName: item.first_name,
@@ -65,29 +51,28 @@ const Directory = () => {
                         profilePicUrl: item.profile_pic_url,
                         backgroundColorHex: item.background_color_hex
                     },
-                    role: item.role
                 };
             } else {
                 return {
-                    // Search helper
-                    searchName: item.name,
-                    // Component Props
+                    name: item.name,
+                    status: item.status,
                     raw: {
                         tournamentId: item.tournament_id,
                         name: item.name,
                         status: item.status,
                         description: item.description,
                         location: item.location,
-                        imageUrl: item.image_url
+                        imageUrl: item.image_url,
+                        startDate: item.start_date,
+                        endDate: item.end_date
                     },
                     creatorName: item.creator_name || 'Admin'
                 };
             }
-          });
-          setData(formatted);
-        }
+        });
+        setData(formatted);
       } catch (error) {
-        console.error("Failed to fetch data:", error);
+        console.error("Failed to fetch directory data:", error);
       } finally {
         setIsLoading(false);
       }
@@ -96,43 +81,22 @@ const Directory = () => {
     if (token) fetchData();
   }, [token, viewMode]);
 
-  const handleRegister = async (tournamentId) => {
-    if (!window.confirm(`Register for Tournament #${tournamentId}?`)) return;
-    try {
-      const response = await fetch('http://localhost:5000/api/tournaments/register', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}` 
-        },
-        body: JSON.stringify({ tournamentId })
-      });
-      if (response.ok) {
-        alert("Registered successfully!");
-        setData(prev => prev.filter(c => c.raw.tournamentId !== tournamentId));
-      } else {
-        const err = await response.json();
-        alert(`Error: ${err.error}`);
+  // --- UNIVERSAL FILTER & SORT HOOK ---
+  const processedData = useDataFilter(
+    data, 
+    { searchQuery, sortBy, sortDirection }, 
+    { 
+      // Tell the hook to look at the 'name' property we created above
+      searchKeys: ['name'],
+      // We can add specific sort strategies here if needed, 
+      // but the default string sort works perfectly for 'Name'
+      sortStrategies: {
+        'Name': (a, b) => a.name.localeCompare(b.name)
       }
-    } catch (e) { console.error(e); }
-  };
-
-  const processedData = useMemo(() => {
-    let result = [...data];
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase().trim();
-      result = result.filter(item => item.searchName.toLowerCase().includes(query));
     }
-    result.sort((a, b) => {
-      const valA = a.searchName.toLowerCase();
-      const valB = b.searchName.toLowerCase();
-      if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
-      if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
-      return 0;
-    });
-    return result;
-  }, [data, searchQuery, sortDirection]);
+  );
 
+  // Pagination Logic
   const totalPages = Math.ceil(processedData.length / ITEMS_PER_PAGE);
   const currentItems = processedData.slice(
     (currentPage - 1) * ITEMS_PER_PAGE,
@@ -150,7 +114,7 @@ const Directory = () => {
         <ViewToggle options={VIEW_OPTIONS} activeId={viewMode} onToggle={setViewMode} />
         <SearchBar
           onSearch={setSearchQuery}
-          onSortChange={setSortBy}
+          onSortChange={setSortBy} 
           onDirectionToggle={setSortDirection}
           sortOptions={['Name']}
           defaultSearchValue=""
@@ -185,7 +149,7 @@ const Directory = () => {
                     key={idx}
                     tournament={item.raw}
                     creatorName={item.creatorName}
-                    onAction={() => handleRegister(item.raw.tournamentId)}
+                    onAction={() => navigate(`/tournament/${item.raw.tournamentId}`)}
                 />
             )
           ))

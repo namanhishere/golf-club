@@ -3,8 +3,7 @@ import { useNavigate } from 'react-router-dom'
 
 import miku404 from '../assets/page-404.jpg';
 
-import Button from '../components/Button.jsx'
-import Tray from '../components/Tray.jsx';
+import { Tray, Button } from '@/components';
 
 const Page404 = () => {
   const navigate = useNavigate();

@@ -1,35 +1,9 @@
-const db = require('../config/db');
 const jwt = require('jsonwebtoken');
-// const bcrypt = require('bcrypt'); // Commented out for demo
+const User = require('../models/User');
 
 exports.register = async (req, res) => {
-  // 1. Destructure all fields including new golf specific ones
-  const { 
-    email, password, lastName, firstName, phone, 
-    vgaNumber, shirtSize, bio, profilePic, bgColor 
-  } = req.body;
-
   try {
-    // Demo: Use plain text password (no hashing)
-    const passwordHash = password; 
-
-    // 2. Call the register_user procedure with ALL 10 parameters
-    await db.query(
-      'CALL register_user(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', 
-      [
-        email, 
-        passwordHash, 
-        lastName, 
-        firstName, 
-        phone, 
-        vgaNumber || null,    // Pass VGA Number
-        shirtSize || null,    // Pass Shirt Size
-        bio || null, 
-        profilePic || null,   // Procedure handles default
-        bgColor || null       // Procedure handles default
-      ]
-    );
-    
+    await User.create(req.body);
     res.status(201).json({ message: 'Registration successful. Membership is pending approval.' });
   } catch (error) {
     console.error("Registration Error:", error);
@@ -41,32 +15,16 @@ exports.login = async (req, res) => {
   const { email, password } = req.body; 
 
   try {
-    // 1. Find User by Email
-    const [users] = await db.query('SELECT * FROM users WHERE email = ?', [email]);
+    // 1. Find User
+    const user = await User.findByEmail(email);
     
-    if (users.length === 0) {
-      return res.status(401).json({ message: 'Invalid email or password' });
-    }
-    
-    const user = users[0];
-
-    // 2. Demo: Verify Plain Text Password
-    // const match = await bcrypt.compare(password, user.password_hash);
-    const match = password === user.password_hash; 
-    
-    if (!match) {
+    // 2. Validate Credentials (Plain text for demo as per your code)
+    if (!user || user.password_hash !== password) {
       return res.status(401).json({ message: 'Invalid email or password' });
     }
 
     // 3. Determine Role
-    let role = 'GUEST';
-    
-    const [admins] = await db.query('SELECT * FROM admins WHERE admin_id = ?', [user.user_id]);
-    if (admins.length > 0) role = 'ADMIN';
-    else {
-      const [members] = await db.query('SELECT * FROM members WHERE member_id = ?', [user.user_id]);
-      if (members.length > 0) role = 'MEMBER';
-    }
+    const role = await User.findRoleById(user.user_id);
 
     // 4. Generate Token
     const token = jwt.sign(
@@ -75,12 +33,11 @@ exports.login = async (req, res) => {
       { expiresIn: '24h' }
     );
 
-    // 5. Return User Data
+    // 5. Send Response
     res.json({
       token,
       user: {
         id: user.user_id,
-        username: user.email.split('@')[0], 
         email: user.email,
         role: role,
         first_name: user.first_name,

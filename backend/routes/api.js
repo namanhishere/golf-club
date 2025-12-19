@@ -15,8 +15,10 @@ router.get('/users', verifyToken, appController.getAllUsers); // For Directory
 
 // --- Tournaments ---
 router.get('/tournaments', verifyToken, appController.getTournaments); 
+router.get('/tournaments/:id', verifyToken, appController.getTournamentDetails); // New
 router.post('/tournaments/register', verifyToken, appController.registerTournament);
-router.post('/tournaments/create', verifyToken, appController.createContent); // Reusing createContent generic or separate if needed
+router.post('/tournaments/create', verifyToken, appController.createTournament); // Updated handler
+router.post('/tournaments/manage', verifyToken, appController.manageApplication); // New// Reusing createContent generic or separate if needed
 
 // --- Content (Docs/Notifs) ---
 router.get('/documents', verifyToken, appController.getDocuments);

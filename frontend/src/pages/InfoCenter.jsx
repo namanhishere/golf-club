@@ -1,13 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Layers, List, Plus } from 'lucide-react'; 
-import { useAuth } from '../context/AuthContext.jsx';
-import Tray from '../components/Tray.jsx';
-import CardDocument from '../components/CardDocument.jsx';
-import CardNotification from '../components/CardNotification.jsx';
-import Loading from '../components/Loading.jsx';
-import Button from '../components/Button.jsx';
-import ViewToggle from '../components/ViewToggle.jsx'; 
+
+import { useAuth } from '../context';
+import { api } from '../services';
+import { Tray, Button, ViewToggle, CardDocument, CardNotification, Loading } from '../components';
 
 const InfoCenter = () => {
   const { token, user } = useAuth();
@@ -22,35 +19,23 @@ const InfoCenter = () => {
     const fetchContent = async () => {
       try {
         setIsLoading(true);
-        const endpoint = viewMode === 'documents' ? 'api/documents' : 'api/notifications';
-        const response = await fetch(`http://localhost:5000/${endpoint}`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const data = await response.json();
+        const endpoint = viewMode === 'documents' ? '/documents' : '/notifications';
+        const data = await api.get(endpoint, token);
         
-        const formatted = data.map(item => {
-            if (viewMode === 'documents') {
-                return {
-                    raw: {
-                        documentId: item.document_id,
-                        title: item.title,
-                        type: item.type, // 'BCN_BYLAW' or 'BENEFIT'
-                        createdAt: item.created_at
-                    },
-                    authorName: item.author_name
-                };
-            } else {
-                return {
-                    raw: {
-                        notificationId: item.notification_id,
-                        title: item.title,
-                        content: item.content,
-                        createdAt: item.created_at
-                    },
-                    authorName: item.author_name
-                };
-            }
-        });
+        const formatted = data.map(item => ({
+            raw: viewMode === 'documents' ? {
+                documentId: item.document_id,
+                title: item.title,
+                type: item.type, 
+                createdAt: item.created_at
+            } : {
+                notificationId: item.notification_id,
+                title: item.title,
+                content: item.content,
+                createdAt: item.created_at
+            },
+            authorName: item.author_name
+        }));
         setItems(formatted);
       } catch (err) { console.error(err); } finally { setIsLoading(false); }
     };

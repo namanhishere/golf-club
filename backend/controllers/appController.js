@@ -31,16 +31,78 @@ exports.getAllUsers = async (req, res) => {
   }
 };
 
-// 3. Get Tournaments
-// Procedure: get_tournaments_view(status)
+// 3. Get Tournaments (Updated to support "My Tournaments" filter)
 exports.getTournaments = async (req, res) => {
   try {
-    const status = req.query.status || null; // Pass null to get all
-    const [results] = await db.query('CALL get_tournaments_view(?)', [status]);
+    const filter = req.query.filter; // 'all' or 'mine'
+    const userId = req.user.id;
+    
+    let query = 'CALL get_tournaments_view(?)';
+    let params = [null];
+
+    if (filter === 'mine') {
+        query = 'CALL get_my_tournaments(?)';
+        params = [userId];
+    }
+
+    const [results] = await db.query(query, params);
     res.json(results[0]);
   } catch (error) { 
     res.status(500).json({ error: error.message }); 
   }
+};
+
+// 3b. Create Tournament (New Enhanced Version)
+exports.createTournament = async (req, res) => {
+    const { 
+        name, description, startDate, endDate, location, 
+        maxParticipants, entryFee, format, imageUrl // <--- Extract imageUrl
+    } = req.body;
+
+    try {
+        // Pass imageUrl as the last parameter
+        await db.query('CALL create_tournament(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [
+            req.user.id, name, description, startDate, endDate, 
+            location, maxParticipants, entryFee, format, imageUrl
+        ]);
+        res.json({ message: 'Tournament created successfully' });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+// 3c. Get Tournament Specifics (Detail, Participants)
+exports.getTournamentDetails = async (req, res) => {
+    const { id } = req.params;
+    try {
+        const [details] = await db.query('CALL get_tournament_details(?)', [id]);
+        const [participants] = await db.query('CALL get_tournament_participants(?)', [id]);
+        
+        if (!details[0] || details[0].length === 0) return res.status(404).json({ error: 'Tournament not found' });
+
+        res.json({
+            details: details[0][0],
+            participants: participants[0]
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+// 3d. Manage Application (Approve/Deny)
+exports.manageApplication = async (req, res) => {
+    const { tournamentId, targetUserId, status } = req.body; // status: 'APPROVED' or 'REJECTED'
+    try {
+        // Optional: Check if req.user.role is ADMIN or Creator of tournament here
+        if (req.user.role !== 'ADMIN') return res.status(403).json({ error: 'Unauthorized' });
+
+        await db.query('CALL manage_tournament_application(?, ?, ?, ?)', [
+            req.user.id, tournamentId, targetUserId, status
+        ]);
+        res.json({ message: `User application ${status}` });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
 };
 
 // 4. Register for Tournament

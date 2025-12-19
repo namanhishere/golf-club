@@ -2,18 +2,17 @@ const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
 
-const apiRoutes = require('./routes/api');
+const mainRouter = require('./routes/index');
 
 const app = express();
 
 // Middleware
-app.use(cors()); // Allow frontend to communicate
-app.use(express.json()); // Parse JSON bodies
+app.use(cors()); 
+app.use(express.json()); 
 
-// Routes
-app.use('/api', apiRoutes);
+// Mount all routes under /api
+app.use('/api', mainRouter);
 
-// Start Server
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
