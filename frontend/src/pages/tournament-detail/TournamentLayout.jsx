@@ -48,7 +48,7 @@ const TournamentLayout = () => {
   if (isCreator) {
     tabs.push({ 
       id: 'requests', 
-      label: `Requests`, 
+      label: `Requests (${pendingCount})`, 
       icon: ShieldAlert,
       alert: pendingCount > 0 
     });

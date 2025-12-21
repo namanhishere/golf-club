@@ -51,7 +51,7 @@ const TournamentRequests = () => {
             <ShieldAlert className="text-txt-primary" size={24} />
             <h2 className="text-2xl font-bold font-outfit text-txt-primary">
               Pending Applications 
-              <span className="text-lg bg-gray-100 text-txt-primary px-2.5 py-0.5 rounded-full ml-3 border border-orange-200">
+              <span className="text-lg bg-gray-100 text-txt-primary px-2.5 py-0.5 rounded-full ml-3 border border-gray-200">
                 {pendingParticipants.length}
               </span>
             </h2>

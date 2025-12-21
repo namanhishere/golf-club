@@ -78,7 +78,7 @@ const Tournaments = () => {
         <div className='text-secondary-accent font-medium font-roboto'>Events you are organizing or participating in</div>
       </div>
 
-      <div className='col-start-4 col-span-6 flex flex-col gap-6 mt-6'>
+      <div className='col-start-4 col-span-6 flex flex-col gap-6'>
         <SearchBar 
             onSearch={setSearchQuery} 
             onSortChange={setSortBy} 
@@ -126,7 +126,7 @@ const Tournaments = () => {
                     key={idx}
                     tournament={item.raw}
                     creatorName={item.creatorName}
-                    onAction={() => navigate(`/tournament/${item.raw.tournamentId}`)}
+                    onAction={() => navigate(`/tournaments/${item.raw.tournamentId}`)}
                 />
             ))
         ) : (
